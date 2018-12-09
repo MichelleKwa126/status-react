@@ -26,5 +26,6 @@ allprojects {
         // for geth, function, and status-go
         flatDir { dirs "libs", "${rootDir}/app/libs" }
         maven { url "https://jitpack.io" }
+        maven { url "http://mvnrepository.com/artifact" }
     }
 }

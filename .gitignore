@@ -24,6 +24,8 @@ DerivedData
 *.ipa
 *.xcuserstate
 project.xcworkspace
+docker/*/*.zip
+docker/*/*.run
 
 # Android/IJ
 #

@@ -1,5 +1,15 @@
 pipeline {
-  agent { label 'linux' }
+  agent { 
+    docker {
+      label 'linux'
+      image 'statusteam/android-desktop-ubuntu:1.0.0'
+      args (
+        "-v /var/tmp/lein:/var/tmp/lein:rw "+
+        "-v /var/tmp/npm:/var/tmp/npm:rw "+
+        "-v /home/jenkins/.gradle:/home/jenkins/.gradle"
+      )
+    }
+  }
 
   options {
     timestamps()
