@@ -48,9 +48,9 @@
                                        "keyCardOnDisconnected"
                                        #(re-frame/dispatch [:hardwallet.callback/on-card-disconnected %]))}])))
 
-(defn get-application-info []
+(defn get-application-info [pairing]
   (.. keycard
-      getApplicationInfo
+      (getApplicationInfo (str pairing))
       (then #(re-frame/dispatch [:hardwallet.callback/on-get-application-info-success %]))
       (catch #(re-frame/dispatch [:hardwallet.callback/on-get-application-info-error (error-object->map %)]))))
 
@@ -75,6 +75,7 @@
         (pair password)
         (then #(re-frame/dispatch [:hardwallet.callback/on-pairing-success %]))
         (catch #(re-frame/dispatch [:hardwallet.callback/on-pairing-error (error-object->map %)])))))
+
 (defn generate-mnemonic
   [{:keys [pairing]}]
   (when pairing
@@ -91,6 +92,14 @@
         (then #(re-frame/dispatch [:hardwallet.callback/on-generate-and-load-key-success %]))
         (catch #(re-frame/dispatch [:hardwallet.callback/on-generate-and-load-key-error (error-object->map %)])))))
 
+(defn unblock-pin
+  [{:keys [puk new-pin pairing]}]
+  (when (and pairing new-pin puk)
+    (.. keycard
+        (unblockPin pairing puk new-pin)
+        (then #(re-frame/dispatch [:hardwallet.callback/on-unblock-pin-success %]))
+        (catch #(re-frame/dispatch [:hardwallet.callback/on-unblock-pin-error (error-object->map %)])))))
+
 (defn verify-pin
   [{:keys [pin pairing]}]
   (when (and pairing pin)
@@ -106,3 +115,26 @@
         (changePin pairing current-pin new-pin)
         (then #(re-frame/dispatch [:hardwallet.callback/on-change-pin-success %]))
         (catch #(re-frame/dispatch [:hardwallet.callback/on-change-pin-error (error-object->map %)])))))
+
+(defn unpair
+  [{:keys [pin pairing]}]
+  (when (and pairing pin)
+    (.. keycard
+        (unpair pairing pin)
+        (then #(re-frame/dispatch [:hardwallet.callback/on-unpair-success %]))
+        (catch #(re-frame/dispatch [:hardwallet.callback/on-unpair-error (error-object->map %)])))))
+
+(defn delete
+  []
+  (.. keycard
+      (delete)
+      (then #(re-frame/dispatch [:hardwallet.callback/on-delete-success %]))
+      (catch #(re-frame/dispatch [:hardwallet.callback/on-delete-error (error-object->map %)]))))
+
+(defn unpair-and-delete
+  [{:keys [pin pairing]}]
+  (when (and pairing pin)
+    (.. keycard
+        (unpairAndDelete pairing pin)
+        (then #(re-frame/dispatch [:hardwallet.callback/on-delete-success %]))
+        (catch #(re-frame/dispatch [:hardwallet.callback/on-delete-error (error-object->map %)])))))

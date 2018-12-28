@@ -49,12 +49,28 @@
  card/generate-and-load-key)
 
 (re-frame/reg-fx
+ :hardwallet/unblock-pin
+ card/unblock-pin)
+
+(re-frame/reg-fx
  :hardwallet/verify-pin
  card/verify-pin)
 
 (re-frame/reg-fx
  :hardwallet/change-pin
  card/change-pin)
+
+(re-frame/reg-fx
+ :hardwallet/unpair
+ card/unpair)
+
+(re-frame/reg-fx
+ :hardwallet/delete
+ card/delete)
+
+(re-frame/reg-fx
+ :hardwallet/unpair-and-delete
+ card/unpair-and-delete)
 
 (re-frame/reg-fx
  :hardwallet/persist-pairing
@@ -76,3 +92,10 @@
                                   (-> %
                                       (js/JSON.parse)
                                       (js->clj :keywordize-keys true))])))))
+
+(re-frame/reg-fx
+ :hardwallet/remove-pairing
+ (fn []
+   (.. js-dependencies/react-native
+       -AsyncStorage
+       (removeItem "status-keycard-pairing"))))

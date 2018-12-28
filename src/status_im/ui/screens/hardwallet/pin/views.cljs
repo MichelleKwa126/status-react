@@ -40,8 +40,8 @@
 (defn pin-indicator [pressed?]
   [react/view (styles/pin-indicator pressed?)])
 
-(defn pin-indicators [pin]
-  [react/view styles/pin-indicator-container
+(defn pin-indicators [pin style]
+  [react/view (merge styles/pin-indicator-container style)
    (map-indexed
     (fn [i group]
       ^{:key i}
@@ -56,7 +56,19 @@
                         (repeat (- 6 (count pin))
                                 nil)))))])
 
-(defn pin-view [{:keys [pin title-label description-label step status error-label]}]
+(defn puk-indicators [puk]
+  [react/view
+   (map-indexed
+    (fn [i puk-group]
+      ^{:key i}
+      [pin-indicators puk-group {:margin-top 15}])
+    (partition 6
+               (concat puk
+                       (repeat (- 12 (count puk))
+                               nil))))])
+
+(defn pin-view [{:keys [pin title-label description-label step status error-label
+                        retry-counter]}]
   (let [enabled? (not= status :verifying)]
     [react/view styles/pin-container
      [react/view styles/center-container
@@ -66,6 +78,12 @@
       [react/text {:style           styles/create-pin-text
                    :number-of-lines 2}
        (i18n/label description-label)]
+      (when retry-counter
+        [react/text {:style {:font-weight :bold
+                             :padding-top 10
+                             :font-size   15
+                             :color       colors/red}}
+         (i18n/label :t/pin-retries-left {:number retry-counter})])
       (case status
         :verifying [react/view styles/waiting-indicator-container
                     [react/activity-indicator {:animating true
@@ -74,7 +92,9 @@
                 [react/text {:style styles/error-text
                              :font  :medium}
                  (i18n/label error-label)]]
-        [pin-indicators pin])
+        (if (= step :puk)
+          [puk-indicators pin]
+          [pin-indicators pin]))
       [numpad step enabled?]]]))
 
 (defview main []

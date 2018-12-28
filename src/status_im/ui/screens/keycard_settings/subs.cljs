@@ -7,3 +7,19 @@
  (fn [db]
    (some-> (get-in db [:hardwallet :secrets :paired-on])
            (utils.datetime/timestamp->year-month-day-date))))
+
+(re-frame/reg-sub
+ :hardwallet/pairing
+ (fn [db]
+   (get-in db [:hardwallet :secrets :pairing])))
+
+(re-frame/reg-sub
+ :hardwallet/pin-retry-counter
+ (fn [db]
+   (get-in db [:hardwallet :application-info :pin-retry-counter])))
+
+(re-frame/reg-sub
+ :hardwallet/puk-retry-counter
+ (fn [db]
+   (get-in db [:hardwallet :application-info :puk-retry-counter])))
+
