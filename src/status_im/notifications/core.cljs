@@ -136,7 +136,7 @@
                         nil (.notifications firebase))
           msg-id       (:id decoded-payload)]
       (when msg-id
-        (.. notification (setNotificationId (str "hash:" msg-id)))) ;; We must prefix the notification ID, otherwise it will cause a crash in iOS
+        (.. notification (setNotificationId (str "id" msg-id)))) ;; We must prefix the notification ID, otherwise it will cause a crash in iOS
       (.. notification
           (setTitle title)
           (setBody body)
