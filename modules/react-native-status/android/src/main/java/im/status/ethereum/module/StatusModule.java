@@ -32,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
+import java.util.Stack;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -127,8 +128,15 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         this.getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("gethEvent", params);
     }
 
+    private File getLogsFile() {
+        final File pubDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        final File logFile = new File(pubDirectory, gethLogFileName);
+
+        return logFile;
+    }
+
     private String prepareLogsFile(final Context context) {
-        final File logFile = new File(context.getNoBackupFilesDir(), gethLogFileName);
+        final File logFile = getLogsFile();
 
         try {
             logFile.setReadable(true);
@@ -468,7 +476,7 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         StatusThreadPoolExecutor.getInstance().execute(r);
     }
 
-    private Boolean zip(File[] _files, File zipFile) {
+    private Boolean zip(File[] _files, File zipFile, Stack<String> errorList) {
         final int BUFFER = 0x8000;
 
 		try {
@@ -484,30 +492,36 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
                 }
 
                 Log.v("Compress", "Adding: " + file.getAbsolutePath());
-                FileInputStream fi = new FileInputStream(file);
-                origin = new BufferedInputStream(fi, BUFFER);
+                try {
+                    FileInputStream fi = new FileInputStream(file);
+                    origin = new BufferedInputStream(fi, BUFFER);
 
-                ZipEntry entry = new ZipEntry(file.getName());
-                out.putNextEntry(entry);
-                int count;
+                    ZipEntry entry = new ZipEntry(file.getName());
+                    out.putNextEntry(entry);
+                    int count;
 
-                while ((count = origin.read(data, 0, BUFFER)) != -1) {
-                    out.write(data, 0, count);
+                    while ((count = origin.read(data, 0, BUFFER)) != -1) {
+                        out.write(data, 0, count);
+                    }
+                    origin.close();
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage());
+                    errorList.push(e.getMessage());
                 }
-                origin.close();
 			}
 
             out.close();
             
             return true;
 		} catch (Exception e) {
+            Log.e(TAG, e.getMessage());
             e.printStackTrace();
             return false;
 		}
     }
 
     private void dumpAdbLogsTo(final FileOutputStream statusLogStream) throws IOException {
-        final String filter = String.format("logcat -d --pid=%d", android.os.Process.myPid());
+        final String filter = "logcat -d -b main ReactNativeJS:D StatusModule:D StatusNativeLogs:D *:S";
         final java.lang.Process p = Runtime.getRuntime().exec(filter);
         final java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
         final java.io.BufferedWriter out = new java.io.BufferedWriter(new java.io.OutputStreamWriter(statusLogStream));
@@ -556,8 +570,8 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         }
 
         final File zipFile = new File(logsTempDir, logsZipFileName);
-        final File gethLogFile = new File(context.getNoBackupFilesDir(), gethLogFileName);
         final File statusLogFile = new File(logsTempDir, statusLogFileName);
+        final File gethLogFile = getLogsFile();
 
         try {
             final long usableSpace = gethLogFile.getUsableSpace();
@@ -570,7 +584,8 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
             
             dumpAdbLogsTo(new FileOutputStream(statusLogFile));
         
-            final Boolean zipped = zip(new File[] {dbFile, gethLogFile, statusLogFile}, zipFile);
+            final Stack<String> errorList = new Stack<String>();
+            final Boolean zipped = zip(new File[] {dbFile, gethLogFile, statusLogFile}, zipFile, errorList);
             if (zipped && zipFile.exists()) {
                 Log.d(TAG, "Sending " + zipFile.getAbsolutePath() + " file through share intent");
 
@@ -587,7 +602,10 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
                 SimpleDateFormat dateFormatGmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 dateFormatGmt.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
                 intentShareFile.putExtra(Intent.EXTRA_SUBJECT, "Status.im logs");
-                intentShareFile.putExtra(Intent.EXTRA_TEXT, "Logs from " + dateFormatGmt.format(new java.util.Date()) + " GMT\n\nThese logs have been generated automatically by the user's request for debugging purposes.");
+                intentShareFile.putExtra(Intent.EXTRA_TEXT,
+                    String.format("Logs from %s GMT\n\nThese logs have been generated automatically by the user's request for debugging purposes.\n\n%s",
+                                  dateFormatGmt.format(new java.util.Date()),
+                                  errorList));
 
                 activity.startActivity(Intent.createChooser(intentShareFile, "Share Debug Logs"));
             } else {
